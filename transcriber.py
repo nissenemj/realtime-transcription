@@ -65,11 +65,13 @@ class Transcriber:
                 low_cpu_mem_usage=True
             )
 
+            print(f"Malli ladattu: {self.model}")  # Lisätty tulostus
             # Siirrä malli oikealle laitteelle
             self.model.to(self.device)
 
             # Lataa prosessori
             self.processor = AutoProcessor.from_pretrained(self.model_id)
+            print(f"Prosessori ladattu: {self.processor}")  # Lisätty tulostus
 
             # Merkitse malli ladatuksi
             self.model_loaded = True
@@ -91,6 +93,7 @@ class Transcriber:
 
                 # Transcribe the audio file
                 transcription = self.transcribe_file(audio_file)
+                print(f"Transkriptio tulos: {transcription}")  # Lisätty tulostus
 
                 # Call the callback function if provided
                 if self.callback:

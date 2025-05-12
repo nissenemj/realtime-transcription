@@ -263,6 +263,7 @@ class TranscriptionApp:
         # Add the transcription to the text
         if transcription.strip():
             print(f"Uusi transkriptio vastaanotettu: {transcription[:100]}...")
+            print(f"Koko transkriptio: {transcription}")  # Lisätty tulostus
 
             # Päivitä käyttöliittymä pääsäikeessä
             self.ui_update_queue.put(("transcription", transcription))
@@ -307,6 +308,8 @@ class TranscriptionApp:
                 elif update_type == "transcription":
                     # Add the transcription to the text area
                     self.transcription_text += data + "\n\n"
+
+                    print(f"Päivitetään tekstialuetta: {data[:100]}...")  # Lisätty tulostus
 
                     # Tallenna kursorin nykyinen sijainti
                     try:
