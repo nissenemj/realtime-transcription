@@ -280,7 +280,10 @@ class TranscriptionApp:
 
     def _update_transcription_text(self, text):
         """Update transcription text directly."""
+        print(f"_update_transcription_text kutsuttu tekstillä: '{text}'")
+
         if not text.strip():
+            print("Teksti on tyhjä, ei päivitetä")
             return
 
         # Add to the full text
@@ -288,10 +291,12 @@ class TranscriptionApp:
 
         # Update the text area
         try:
+            print(f"Päivitetään tekstialuetta, nykyinen teksti: '{self.transcription_area.get(1.0, tk.END)}'")
             self.transcription_area.delete(1.0, tk.END)
             self.transcription_area.insert(tk.END, self.transcription_text)
             self.transcription_area.see(tk.END)
             print(f"Tekstialue päivitetty suoraan, pituus: {len(self.transcription_text)}")
+            print(f"Tekstialueen sisältö päivityksen jälkeen: '{self.transcription_area.get(1.0, tk.END)}'")
         except Exception as e:
             print(f"Virhe tekstialueen suorassa päivityksessä: {e}")
 

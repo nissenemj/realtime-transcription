@@ -85,6 +85,10 @@ class AudioRecorder:
         if status:
             print(f"Status: {status}")
 
+        # Check if audio data contains sound
+        audio_level = np.max(np.abs(indata))
+        print(f"Äänitaso: {audio_level:.6f}")
+
         # Add the audio data to the queue
         self.audio_queue.put(indata.copy())
 
@@ -151,6 +155,8 @@ class AudioRecorder:
         if self.recording:
             return
 
+        print(f"Aloitetaan nauhoitus, laite: {device_id}")
+
         # Handle special case for system audio on macOS
         if device_id == -1:
             # Set up system audio capture on macOS
@@ -165,24 +171,36 @@ class AudioRecorder:
                 # Use the default input device
                 self.current_device = sd.default.device[0]
 
-        # Start the audio stream
-        self.stream = sd.InputStream(
-            device=self.current_device,
-            channels=self.channels,
-            samplerate=self.sample_rate,
-            callback=self._audio_callback,
-            dtype=self.dtype
-        )
+        print(f"Käytetään laitetta: {self.current_device}")
 
-        self.recording = True
-        self.stream.start()
+        try:
+            # Tarkista laite
+            device_info = sd.query_devices(self.current_device)
+            print(f"Laitteen tiedot: {device_info}")
 
-        # Start the processing thread
-        self.thread = threading.Thread(target=self._process_audio)
-        self.thread.daemon = True
-        self.thread.start()
+            # Start the audio stream
+            self.stream = sd.InputStream(
+                device=self.current_device,
+                channels=self.channels,
+                samplerate=self.sample_rate,
+                callback=self._audio_callback,
+                dtype=self.dtype
+            )
 
-        print(f"Nauhoitus aloitettu laitteella: {self.current_device}")
+            self.recording = True
+            self.stream.start()
+            print("Äänivirta käynnistetty onnistuneesti")
+
+            # Start the processing thread
+            self.thread = threading.Thread(target=self._process_audio)
+            self.thread.daemon = True
+            self.thread.start()
+            print("Käsittelysäie käynnistetty")
+
+            print(f"Nauhoitus aloitettu laitteella: {self.current_device}")
+        except Exception as e:
+            print(f"Virhe nauhoituksen aloittamisessa: {e}")
+            self.recording = False
 
     def stop_recording(self):
         """Stop recording audio."""

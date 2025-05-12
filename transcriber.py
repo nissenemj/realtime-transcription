@@ -19,6 +19,7 @@ class Transcriber:
             callback: Function to call when transcription is complete
             use_diarization: Whether to use speaker diarization
         """
+        print(f"Alustetaan Transcriber, malli: {model_id}, kieli: {language}")
         self.model_id = model_id
         self.language = language
         self.callback = callback
@@ -32,6 +33,15 @@ class Transcriber:
         self.use_diarization = use_diarization
         self.diarization = None
         self.model_loaded = False
+
+        # Tarkista PyTorch-versio
+        print(f"PyTorch-versio: {torch.__version__}")
+        print(f"CUDA saatavilla: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            print(f"CUDA-versio: {torch.version.cuda}")
+            print(f"CUDA-laitteet: {torch.cuda.device_count()}")
+            for i in range(torch.cuda.device_count()):
+                print(f"  Laite {i}: {torch.cuda.get_device_name(i)}")
 
         # Load the model and processor
         self._load_model()
@@ -221,21 +231,42 @@ class Transcriber:
                 print("Tyhjä äänisyöte")
                 return "Tyhjä äänisyöte"
 
+            # Tarkista äänen taso
+            audio_level = np.max(np.abs(audio_input))
+            print(f"Äänitaso transkriptiossa: {audio_level:.6f}")
+
+            if audio_level < 0.001:  # Jos äänitaso on liian matala
+                print("Äänitaso on liian matala transkriptiota varten")
+                return "Äänitaso on liian matala. Puhu kovempaa tai tarkista mikrofoni."
+
             # Normalisoi ääni
             audio_input = audio_input / np.max(np.abs(audio_input)) if np.max(np.abs(audio_input)) > 0 else audio_input
 
+            # Tulosta äänen tiedot
+            print(f"Äänen muoto: {audio_input.shape}, näytteenottotaajuus: {sample_rate}")
+
             # Käsittele ääni
-            inputs = self.processor(
-                audio_input,
-                sampling_rate=sample_rate,
-                return_tensors="pt",
-                truncation=False,
-                padding="longest",
-                return_attention_mask=True
-            )
+            try:
+                inputs = self.processor(
+                    audio_input,
+                    sampling_rate=sample_rate,
+                    return_tensors="pt",
+                    truncation=False,
+                    padding="longest",
+                    return_attention_mask=True
+                )
+                print("Ääni käsitelty prosessorilla onnistuneesti")
+            except Exception as proc_error:
+                print(f"Virhe äänen käsittelyssä prosessorilla: {proc_error}")
+                return f"Virhe äänen käsittelyssä: {proc_error}"
 
             # Siirrä syötteet oikealle laitteelle
-            inputs = inputs.to(self.device, dtype=self.torch_dtype)
+            try:
+                inputs = inputs.to(self.device, dtype=self.torch_dtype)
+                print(f"Syötteet siirretty laitteelle: {self.device}")
+            except Exception as device_error:
+                print(f"Virhe syötteiden siirrossa laitteelle: {device_error}")
+                return f"Virhe syötteiden siirrossa: {device_error}"
 
             # Generoi transkriptio
             gen_kwargs = {
@@ -245,13 +276,29 @@ class Transcriber:
                 "num_beams": 1
             }
 
-            with torch.no_grad():
-                generated_ids = self.model.generate(**inputs, **gen_kwargs)
+            try:
+                with torch.no_grad():
+                    print("Aloitetaan transkription generointi...")
+                    generated_ids = self.model.generate(**inputs, **gen_kwargs)
+                    print("Transkription generointi onnistui")
+            except Exception as gen_error:
+                print(f"Virhe transkription generoinnissa: {gen_error}")
+                return f"Virhe transkription generoinnissa: {gen_error}"
 
             # Dekoodaa transkriptio
-            transcription = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            try:
+                transcription = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                print(f"Transkriptio dekoodattu: {transcription}")
+            except Exception as decode_error:
+                print(f"Virhe transkription dekoodauksessa: {decode_error}")
+                return f"Virhe transkription dekoodauksessa: {decode_error}"
 
-            print(f"Transkriptio onnistui: {transcription[:50]}...")
+            # Tarkista, onko transkriptio tyhjä
+            if not transcription.strip():
+                print("Transkriptio on tyhjä")
+                return "Ei tunnistettavaa puhetta. Puhu kovempaa tai tarkista mikrofoni."
+
+            print(f"Transkriptio onnistui: {transcription}")
             return transcription
 
         except Exception as e:
