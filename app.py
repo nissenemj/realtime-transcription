@@ -28,6 +28,9 @@ class TranscriptionApp:
         self.transcription_text = ""
         self.ui_update_queue = queue.Queue()
 
+        # Create the UI
+        self.create_ui()
+
         # Set up the transcriber
         self.transcriber = Transcriber(
             callback=self.on_transcription,
@@ -37,11 +40,26 @@ class TranscriptionApp:
         # Start the transcription processing
         self.transcriber.start_processing()
 
-        # Create the UI
-        self.create_ui()
+        # Testaa tekstialueen päivitystä heti alussa
+        self.root.after(2000, self._test_text_update)
 
         # Start the UI update thread
         self.update_ui()
+
+    def _test_text_update(self):
+        """Test text area update."""
+        print("Testataan tekstialueen päivitystä...")
+        test_text = "Tämä on testi. Jos näet tämän tekstin, tekstialueen päivitys toimii."
+
+        # Päivitä suoraan
+        try:
+            self.transcription_text += test_text + "\n\n"
+            self.transcription_area.delete(1.0, tk.END)
+            self.transcription_area.insert(tk.END, self.transcription_text)
+            self.transcription_area.see(tk.END)
+            print("Tekstialue päivitetty suoraan testiä varten")
+        except Exception as e:
+            print(f"Virhe tekstialueen päivityksessä: {e}")
 
     def create_ui(self):
         """Create the user interface."""
@@ -99,7 +117,7 @@ class TranscriptionApp:
         device_menu.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
 
         # Bind selection event
-        def on_device_select(event):
+        def on_device_select(_):
             print(f"Äänilähde valittu: {self.selected_device.get()}")
 
         device_menu.bind("<<ComboboxSelected>>", on_device_select)
@@ -218,33 +236,54 @@ class TranscriptionApp:
                 selected = self.selected_device.get()
                 device_id = None
 
+                print(f"Valittu äänilähde: {selected}")
+
                 # Extract the device ID from the selection
                 for id, name in self.recorder.get_available_devices():
                     if f"{name} (ID: {id})" == selected:
                         device_id = id
+                        print(f"Löydettiin laite ID: {id}, nimi: {name}")
                         break
 
+                if device_id is None:
+                    print("Laitetta ei löytynyt, käytetään oletuslaitetta")
+                    # Käytä oletuslaitetta, jos valittua laitetta ei löydy
+                    device_id = sd.default.device[0]
+                    print(f"Oletuslaite: {device_id}")
+
                 # Start the recorder
+                print(f"Aloitetaan nauhoitus laitteella: {device_id}")
                 self.recorder.start_recording(device_id)
 
                 # Update UI
                 self.recording = True
                 self.record_button.config(text="Lopeta nauhoitus")
                 self.status_text.set("Nauhoitetaan...")
+                print("Käyttöliittymä päivitetty: nauhoitetaan")
+
+                # Testaa transkriptiota suoraan
+                print("Testataan transkriptiota suoraan...")
+                test_text = "Tämä on testitranskriptio. Jos näet tämän tekstin käyttöliittymässä, tekstin päivitys toimii."
+                self.ui_update_queue.put(("transcription", test_text))
+                self.root.after(1000, self._update_transcription_text, test_text)
 
             except Exception as e:
+                print(f"Virhe nauhoituksen aloittamisessa: {e}")
                 messagebox.showerror("Virhe", f"Nauhoituksen aloittaminen epäonnistui: {e}")
         else:
             # Stop recording
             try:
+                print("Lopetetaan nauhoitus")
                 self.recorder.stop_recording()
 
                 # Update UI
                 self.recording = False
                 self.record_button.config(text="Aloita nauhoitus")
                 self.status_text.set("Nauhoitus pysäytetty")
+                print("Käyttöliittymä päivitetty: nauhoitus pysäytetty")
 
             except Exception as e:
+                print(f"Virhe nauhoituksen lopettamisessa: {e}")
                 messagebox.showerror("Virhe", f"Nauhoituksen lopettaminen epäonnistui: {e}")
 
     def on_audio_chunk(self, audio_file):
