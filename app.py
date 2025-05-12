@@ -28,9 +28,6 @@ class TranscriptionApp:
         self.transcription_text = ""
         self.ui_update_queue = queue.Queue()
 
-        # Create the UI
-        self.create_ui()
-
         # Set up the transcriber
         self.transcriber = Transcriber(
             callback=self.on_transcription,
@@ -39,6 +36,9 @@ class TranscriptionApp:
 
         # Start the transcription processing
         self.transcriber.start_processing()
+
+        # Create the UI
+        self.create_ui()
 
         # Testaa tekstialueen päivitystä heti alussa
         self.root.after(2000, self._test_text_update)
